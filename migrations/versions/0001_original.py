@@ -1,3 +1,9 @@
+from alembic import op
+revision = "0001"
+down_revision = None
+branch_labels = None
+depends_on = None
+
 from sqlalchemy import (
     Column,
     Integer,
@@ -5,21 +11,18 @@ from sqlalchemy import (
     Text,
     DateTime,
     ForeignKey,
-    Boolean,
-    CheckConstraint,
     Numeric
 )
 
 from sqlalchemy.sql import func
 
-from database import Base
+from sqlalchemy.orm import declarative_base
+Base = declarative_base()
 
 class Usuario(Base):
     __tablename__ = "usuarios"
 
     id = Column(Integer, primary_key=True, index=True)
-
-    is_admin = Column(Boolean, nullable=False, default=False, server_default="0")
 
     nome = Column(
         String(150),
@@ -100,16 +103,9 @@ class Analise(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    planta_id = Column(Integer, ForeignKey("plantas.id"), nullable=True)
-    status = Column(String(30), nullable=False, default="pendente", server_default="pendente")
-    conclusao = Column(String(40), nullable=True)
-    versao_modelo = Column(String(100), nullable=True)
-    erro = Column(String(255), nullable=True)
-
     usuario_id = Column(
         Integer,
         ForeignKey("usuarios.id"),
-        index=True,
         nullable=False
     )
 
@@ -132,7 +128,6 @@ class ResultadoAnalise(Base):
     analise_id = Column(
         Integer,
         ForeignKey("analises.id"),
-        index=True,
         nullable=False
     )
 
@@ -142,9 +137,9 @@ class ResultadoAnalise(Base):
         nullable=False
     )
 
-    confianca_modelo = Column("precisao_ia", Numeric(5, 2))
-    __table_args__ = (CheckConstraint("precisao_ia >= 0 AND precisao_ia <= 1", name="ck_confianca"),)
-
+    precisao_ia = Column(
+        Numeric(5, 2)
+    )
 
 
 class HistoricoCuidados(Base):
@@ -155,7 +150,6 @@ class HistoricoCuidados(Base):
     analise_id = Column(
         Integer,
         ForeignKey("analises.id"),
-        index=True,
         nullable=False
     )
 
@@ -171,3 +165,9 @@ class HistoricoCuidados(Base):
         DateTime,
         default=func.now()
     )
+
+def upgrade():
+    Base.metadata.create_all(op.get_bind())
+
+def downgrade():
+    raise RuntimeError("Downgrade destrutivo desabilitado; restaure um backup.")

@@ -1,25 +1,22 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
+from config import settings
 
-DATABASE_URL = "mysql+pymysql://root:@localhost:3306/verdexa"
+engine = create_engine(settings.database_url, pool_pre_ping=True,
+                       connect_args={'check_same_thread': False} if settings.database_url.startswith('sqlite') else {})
+if engine.dialect.name == 'sqlite':
+    @event.listens_for(engine, 'connect')
+    def habilitar_chaves_estrangeiras(connection, _):
+        connection.execute('PRAGMA foreign_keys=ON')
 
-engine = create_engine(
-    DATABASE_URL,
-    echo=True
-)
-
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
-
+SessionLocal = sessionmaker(bind=engine, autoflush=False)
 Base = declarative_base()
 
-def get_db():
-    db = SessionLocal()
 
-    try:
-        yield db
-    finally:
-        db.close()
+def get_db():
+    with SessionLocal() as db:
+        try:
+            yield db
+        except Exception:
+            db.rollback()
+            raise
